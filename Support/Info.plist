@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.noelabu.redactor</string>
+    <key>CFBundleExecutable</key>
+    <string>Redactor</string>
+    <key>CFBundleName</key>
+    <string>Redactor</string>
+    <key>CFBundleDisplayName</key>
+    <string>Redactor</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>26.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Redactor saves redacted screenshots to your screenshot folder.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Redactor saves redacted screenshots to your screenshot folder.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>Redactor captures a screen region so it can redact sensitive text before saving.</string>
+</dict>
+</plist>
