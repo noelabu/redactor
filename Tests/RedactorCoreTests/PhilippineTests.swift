@@ -159,3 +159,73 @@ private func matched(_ text: String, _ ranges: [NSRange]) -> [String] {
         #expect(coverage(of: rendered.rects["Pangalan"]!, by: result.boxes) < 0.5)
     }
 }
+
+/// Geometry from a review-tool screenshot: field-name column, AI value, ground truth edit box.
+@Suite struct FieldValueBoxesTests {
+    @Test func takesEveryColumnAndWrappedLines() {
+        let label = CGRect(x: 1084, y: 586, width: 133, height: 17)      // billing_address
+        let candidates = [
+            CGRect(x: 1261, y: 566, width: 177, height: 17),  // 0 206D,NA,NORODOM Tonle
+            CGRect(x: 1258, y: 586, width: 188, height: 17),  // 1 Basak Chamkar Mon,Phnom
+            CGRect(x: 1261, y: 607, width: 37, height: 14),   // 2 Penh
+            CGRect(x: 1502, y: 560, width: 162, height: 17),  // 3 ground truth, same three lines
+            CGRect(x: 1502, y: 583, width: 174, height: 17),  // 4
+            CGRect(x: 1502, y: 610, width: 34, height: 14),   // 5
+            CGRect(x: 1084, y: 664, width: 87, height: 18),   // 6 next row's field name
+            CGRect(x: 1258, y: 668, width: 20, height: 14),   // 7 next row's value
+        ]
+        let boxes = FieldLabels.valueBoxes(of: label, among: candidates) { _ in true }
+        #expect(Set(boxes) == [0, 1, 2, 3, 4, 5])
+    }
+
+    @Test func takesCellThatSitsAboveTheLabel() {
+        let label = CGRect(x: 1084, y: 496, width: 142, height: 20)      // account_holder_name
+        let candidates = [
+            CGRect(x: 1261, y: 484, width: 194, height: 21),  // 0 BOOST CAPITAL (CAMBODIA)
+            CGRect(x: 1502, y: 481, width: 101, height: 14),  // 1 BOOST CAPITAL
+            CGRect(x: 1502, y: 505, width: 78, height: 14),   // 2 (CAMBODIA)
+        ]
+        let boxes = FieldLabels.valueBoxes(of: label, among: candidates) { _ in true }
+        #expect(Set(boxes) == [0, 1, 2])
+    }
+
+    @Test func nameInGroundTruthAfterAIValue() {
+        let label = CGRect(x: 1072, y: 502, width: 95, height: 14)       // taxpayer_name
+        let candidates = [
+            CGRect(x: 1322, y: 500, width: 180, height: 17),  // 0 AI value
+            CGRect(x: 1529, y: 487, width: 107, height: 14),  // 1 GOMEZ, PATRICK
+            CGRect(x: 1529, y: 511, width: 58, height: 14),   // 2 NANGKIL
+            CGRect(x: 1072, y: 569, width: 75, height: 14),   // 3 trade_name, next row
+        ]
+        #expect(Set(FieldLabels.valueBoxes(of: label, among: candidates) { $0 != 3 }) == [0, 1, 2])
+    }
+
+    @Test func doesNotCrossIntoAnotherPanel() {
+        let label = CGRect(x: 593, y: 337, width: 127, height: 17)       // Account Holder Name
+        let candidates = [
+            CGRect(x: 752, y: 337, width: 209, height: 17),   // 0 BOOST CAPITAL (CAMBODIA) CO
+            CGRect(x: 1084, y: 328, width: 43, height: 14),   // 1 FIELD, header of a panel to the right
+        ]
+        #expect(FieldLabels.valueBoxes(of: label, among: candidates) { _ in true } == [0])
+    }
+
+    @Test func wrappedLineStopsAtTheNextField() {
+        let label = CGRect(x: 100, y: 100, width: 100, height: 17)       // Address
+        let candidates = [
+            CGRect(x: 240, y: 100, width: 200, height: 17),   // 0 12 Rizal St
+            CGRect(x: 100, y: 125, width: 100, height: 17),   // 1 next field's label, tightly spaced
+            CGRect(x: 240, y: 125, width: 200, height: 17),   // 2 next field's value
+        ]
+        #expect(FieldLabels.valueBoxes(of: label, among: candidates) { $0 != 1 } == [0])
+    }
+
+    @Test func stopsAtTheNextLabelOnTheRow() {
+        let label = CGRect(x: 100, y: 100, width: 60, height: 20)        // Name
+        let candidates = [
+            CGRect(x: 180, y: 100, width: 100, height: 20),   // 0 Juan Dela Cruz
+            CGRect(x: 320, y: 100, width: 40, height: 20),    // 1 Age (a label)
+            CGRect(x: 380, y: 100, width: 30, height: 20),    // 2 30
+        ]
+        #expect(FieldLabels.valueBoxes(of: label, among: candidates) { $0 != 1 } == [0])
+    }
+}

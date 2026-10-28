@@ -2,9 +2,9 @@
 
 # Redactor
 
-**Screenshot anything. Personal info is blacked out before it ever reaches your clipboard.**
+**Screenshot or copy anything. Personal info is removed before it ever reaches your clipboard.**
 
-A macOS menu bar app for screenshots of IDs, payslips, forms and chats — built with Philippine documents in mind. Everything runs on your Mac.
+A macOS menu bar app for screenshots and copied text from IDs, payslips, forms, chats, logs and config — built with Philippine documents in mind. Everything runs on your Mac.
 
 ![macOS 26+](https://img.shields.io/badge/macOS-26%2B-black?logo=apple)
 ![Swift 6.2](https://img.shields.io/badge/Swift-6.2-F05138?logo=swift&logoColor=white)
@@ -17,7 +17,7 @@ A macOS menu bar app for screenshots of IDs, payslips, forms and chats — built
 
 ## Why
 
-A screenshot is the fastest way to share what's on your screen, and the easiest way to leak someone's TIN, birthday or phone number. Redactor replaces the macOS screenshot shortcut with one that finds that information and boxes it before you paste.
+A screenshot is the fastest way to share what's on your screen, and the easiest way to leak someone's TIN, birthday or phone number. Redactor replaces the macOS screenshot shortcut with one that finds that information and boxes it before you paste, and does the same for text you copy.
 
 <p align="center">
   <img src="docs/images/chat.png" alt="A chat before and after Redactor: the contact's name, TIN, mobile number and email are blacked out; the rest of the conversation is untouched." width="820">
@@ -42,6 +42,38 @@ flowchart LR
 
 **Review Last Capture…** in the menu reopens any of the last five captures. They live in memory only and are gone when you quit.
 
+## Copied text
+
+While Redactor is running, text you copy is redacted automatically. Each value becomes a numbered placeholder, and the same value gets the same placeholder throughout the copy:
+
+```
+Copied:  Hi team, doc 8812 fails for Juan Dela Cruz (TIN 123-456-789-000), juan.dc@gmail.com
+Pasted:  Hi team, doc 8812 fails for [NAME 1] (TIN [ID 1]), [EMAIL 1]
+```
+
+```mermaid
+flowchart LR
+    A["Copy text"] --> B["Rules<br/>under 0.1 s"]
+    B --> C["📋 Clipboard"]
+    B --> D["AI check<br/>1–3 s"]
+    D -. "if nothing new was copied" .-> C
+```
+
+1. The rules' version replaces the clipboard within a quarter of a second.
+2. The AI check runs next and, if it finds more, replaces the clipboard again, unless you've copied something else in the meantime.
+3. A banner says how many items were redacted. **Restore original** on the banner, or **Restore Last Copy** in the menu, puts the original back.
+
+| Placeholder | For |
+|---|---|
+| `[NAME n]` `[BIRTHDATE n]` `[ADDRESS n]` | Personal details |
+| `[ID n]` `[CARD n]` | Government IDs, account and card numbers |
+| `[EMAIL n]` `[PHONE n]` | Contact details |
+| `[SECRET n]` | API keys, tokens, passwords |
+
+Links are kept so shared links still work; personal info inside a link (`?email=…`) is still redacted. Copying text that's already redacted changes nothing.
+
+**Skipped:** copies from password managers (they mark them concealed), apps you exclude with **Exclude &lt;app&gt;** in the menu, files and images, and anything copied before launch or while **Redact Copied Text** is off. Copies over 10,000 characters skip the AI check; copies over a million characters are left alone, with a banner.
+
 ## What gets redacted
 
 | | Examples |
@@ -50,6 +82,8 @@ flowchart LR
 | **Contact details** | Email addresses, phone numbers, street addresses, links |
 | **Cards** | Credit and debit card numbers (Luhn-checked) |
 | **Labelled form fields** | `Name:`, `Date of Birth`, `Apelyido / Last Name`, `Tirahan / Address`, … in English or Tagalog — the value next to or below the label |
+| **Secrets** | OpenAI, Anthropic, AWS, GitHub, Slack, Google and Stripe keys, JWTs, `Bearer` tokens, private keys, the password in `postgres://user:pass@host` |
+| **Code and config keys** | `"full_name": "…"`, `firstName: …`, `date_of_birth=…`, `DB_PASSWORD=…`, `?email=…` — JSON, YAML, `.env`, logs and URLs |
 | **AI check** | Names, birthdates, addresses and account numbers the rules missed |
 
 Names and birthdates are redacted by the rules only when they have a label, so a document date or a company name isn't blacked out by mistake.
@@ -69,6 +103,15 @@ After the first pass, Redactor reads the **redacted** image again, up to twice, 
 - 🧾 **No metadata.** Saved PNGs keep only pixels, size, DPI and colour profile.
 - 📋 **Clipboard guard.** Holding Control during selection makes macOS copy the unredacted image; Redactor notices and clears it.
 - 📡 **No network.** OCR and the AI model both run on your Mac.
+- 📝 **Plain text only.** Redacted text replaces every format on the clipboard, so the original's rich text or HTML copy doesn't survive.
+- 🧠 **Copied originals stay in memory**, for Restore, until your next copy. If checking copied text fails, the clipboard is cleared.
+
+### Known limits
+
+- Clipboard managers (Raycast, Paste, Alfred) and Universal Clipboard see what you copy before Redactor does. Exclude sensitive apps there, or turn Handoff off, if that matters.
+- A paste within about a quarter of a second of copying, or before the AI check finishes, can carry the earlier version.
+- The AI check skips Filipino lines; the rules still cover them.
+- Restore brings back plain text, not the original formatting.
 
 ## Install
 
@@ -125,8 +168,8 @@ REDACTOR_README_OUT=$PWD/docs/images swift test --filter ReadmeImageTests  # reg
 The README images are drawn from made-up data and redacted by the real engine.
 
 ```
-Sources/RedactorCore/   detection, OCR, box geometry, rendering, PNG output
-Sources/Redactor/       menu bar app: hotkey, capture, preview window
+Sources/RedactorCore/   detection, OCR, text redaction, box geometry, rendering, PNG output
+Sources/Redactor/       menu bar app: hotkey, capture, preview window, clipboard watcher
 Tests/RedactorCoreTests/
 scripts/                signing certificate setup
 build.sh                builds, signs and installs the .app bundle
