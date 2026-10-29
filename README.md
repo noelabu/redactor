@@ -84,9 +84,12 @@ Links are kept so shared links still work; personal info inside a link (`?email=
 | **Labelled form fields** | `Name:`, `Date of Birth`, `Apelyido / Last Name`, `Tirahan / Address`, … in English or Tagalog — the value next to or below the label |
 | **Secrets** | OpenAI, Anthropic, AWS, GitHub, Slack, Google and Stripe keys, JWTs, `Bearer` tokens, private keys, the password in `postgres://user:pass@host` |
 | **Code and config keys** | `"full_name": "…"`, `firstName: …`, `date_of_birth=…`, `DB_PASSWORD=…`, `?email=…` — JSON, YAML, `.env`, logs and URLs |
+| **Field tables** | A field-name column like `employee_name`, `billing_address` or `tin_number` in a review tool: the value in every column on that row, including values that wrap onto several lines |
 | **AI check** | Names, birthdates, addresses and account numbers the rules missed |
 
 Names and birthdates are redacted by the rules only when they have a label, so a document date or a company name isn't blacked out by mistake.
+
+Any `*_name` key counts as a name (`taxpayer_name`, `account_holder_name`, `trade_name`) unless it names a thing, like `bank_name`, `branch_name` or `file_name`. Once a value is redacted, the same text is redacted everywhere else on the page or in the copy, so a name shown both as extracted text and in an edit box goes in both places.
 
 ### The AI check
 
@@ -95,6 +98,10 @@ When Apple Intelligence is on, Apple's on-device language model reads the text a
 ### The double-check
 
 After the first pass, Redactor reads the **redacted** image again, up to twice, and boxes anything a detector can still read.
+
+### Misread small text
+
+Vision sometimes reads a line of small text as a squashed box of garbage (`registered_address` as `neaistened addnecc`). Lines much shorter than the rest of the page are read again from a crop of just that line.
 
 ## Privacy
 
@@ -111,6 +118,8 @@ After the first pass, Redactor reads the **redacted** image again, up to twice, 
 - Clipboard managers (Raycast, Paste, Alfred) and Universal Clipboard see what you copy before Redactor does. Exclude sensitive apps there, or turn Handoff off, if that matters.
 - A paste within about a quarter of a second of copying, or before the AI check finishes, can carry the earlier version.
 - The AI check skips Filipino lines; the rules still cover them.
+- A value that wraps differently somewhere else on the page (an address split over other lines) is only caught by its label or the AI check, not by the repeat search.
+- Trailing punctuation after a value, like the `.` in `JR.`, stays visible.
 - Restore brings back plain text, not the original formatting.
 
 ## Install
