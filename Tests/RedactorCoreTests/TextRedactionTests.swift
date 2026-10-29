@@ -23,7 +23,7 @@ import Testing
     @Test func labelledFieldsAndIDs() async throws {
         let text = "Name: Juan Dela Cruz\nTIN: 123-456-789-000\nPosition: QA Analyst"
         let r = try await TextRedactionEngine.run(text)
-        #expect(r.text == "Name: [NAME 1]\nTIN: [ID 1]\nPosition: QA Analyst")
+        #expect(r.text == "Name: [NAME 1]\nTIN: ***************\nPosition: QA Analyst")
         #expect(r.replacements == 2)
     }
 
@@ -65,7 +65,7 @@ import Testing
     }
 
     @Test func placeholdersDoNotTriggerLabels() async throws {
-        let text = "Name: [NAME 1]\nID: [ID 1]\nJuan"
+        let text = "Name: [NAME 1]\nID: ***********\nJuan"
         let r = try await TextRedactionEngine.run(text)
         #expect(r.text == text)
     }

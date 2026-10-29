@@ -44,11 +44,11 @@ flowchart LR
 
 ## Copied text
 
-While Redactor is running, text you copy is redacted automatically. Each value becomes a numbered placeholder, and the same value gets the same placeholder throughout the copy:
+While Redactor is running, text you copy is redacted automatically. Each value becomes a numbered placeholder, and the same value gets the same placeholder throughout the copy. ID and account numbers become one `*` per character instead:
 
 ```
 Copied:  Hi team, doc 8812 fails for Juan Dela Cruz (TIN 123-456-789-000), juan.dc@gmail.com
-Pasted:  Hi team, doc 8812 fails for [NAME 1] (TIN [ID 1]), [EMAIL 1]
+Pasted:  Hi team, doc 8812 fails for [NAME 1] (TIN ***************), [EMAIL 1]
 ```
 
 ```mermaid
@@ -66,7 +66,8 @@ flowchart LR
 | Placeholder | For |
 |---|---|
 | `[NAME n]` `[BIRTHDATE n]` `[ADDRESS n]` | Personal details |
-| `[ID n]` `[CARD n]` | Government IDs, account and card numbers |
+| `*****` | Government IDs and account numbers |
+| `[CARD n]` | Card numbers |
 | `[EMAIL n]` `[PHONE n]` | Contact details |
 | `[SECRET n]` | API keys, tokens, passwords |
 

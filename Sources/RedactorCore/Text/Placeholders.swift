@@ -1,6 +1,6 @@
 import Foundation
 
-/// `[NAME 1]`, `[ID 2]`…: what redacted values become in copied text.
+/// `[NAME 1]`, `[EMAIL 2]`…: what redacted values become in copied text. IDs become `*` per character instead.
 enum Placeholders {
     static func label(for kind: PIIKind) -> String {
         switch kind {
@@ -21,8 +21,12 @@ enum Placeholders {
         pattern: #"\[(NAME|ID|EMAIL|PHONE|ADDRESS|BIRTHDATE|CARD|LINK|SECRET|REDACTED) (\d+)\]"#
     )
 
+    /// Masked IDs. Four or more, so Markdown `**bold**` isn't taken for one.
+    private static let maskRegex = try! NSRegularExpression(pattern: #"\*{4,}"#)
+
     static func ranges(in text: String) -> [NSRange] {
-        regex.matches(in: text, range: NSRange(location: 0, length: (text as NSString).length)).map(\.range)
+        let all = NSRange(location: 0, length: (text as NSString).length)
+        return (regex.matches(in: text, range: all) + maskRegex.matches(in: text, range: all)).map(\.range)
     }
 
     /// `text` with every placeholder replaced by X's of the same length, so ranges stay valid and
@@ -70,6 +74,7 @@ struct PlaceholderNumbering {
     }
 
     mutating func placeholder(kind: PIIKind, value: String) -> String {
+        if kind == .idNumber { return String(repeating: "*", count: value.count) }
         let label = Placeholders.label(for: kind)
         let key = label + "\u{0}" + Self.normalize(value, kind: kind)
         if let existing = assigned[key] { return existing }
