@@ -8,7 +8,11 @@ public struct DataDetectorDetector: Detector {
             | NSTextCheckingResult.CheckingType.link.rawValue
     )
 
-    public init() {}
+    public let includeLinks: Bool
+
+    public init(includeLinks: Bool = true) {
+        self.includeLinks = includeLinks
+    }
 
     public func detect(in text: String) -> [Detection] {
         let full = NSRange(text.startIndex..., in: text)
@@ -17,8 +21,8 @@ public struct DataDetectorDetector: Detector {
             case .phoneNumber: return Detection(kind: .phone, range: result.range)
             case .address: return Detection(kind: .address, range: result.range)
             case .link:
-                let kind: PIIKind = result.url?.scheme == "mailto" ? .email : .link
-                return Detection(kind: kind, range: result.range)
+                if result.url?.scheme == "mailto" { return Detection(kind: .email, range: result.range) }
+                return includeLinks ? Detection(kind: .link, range: result.range) : nil
             default: return nil
             }
         }

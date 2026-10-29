@@ -20,7 +20,7 @@ import Testing
         ("Quarterly Revenue Report", PIIKind.name), ("Prepared by Finance Team", .name), ("Q3 2026 revenue grew 12%", .name),
         ("Oct 3", .birthdate), ("Oct 20, 2026", .birthdate), ("October 2026", .birthdate),
         ("25000.00", .idNumber), ("25,000.00", .idNumber), ("BDO", .phone), ("12%", .idNumber),
-        ("Oct 3", .email), ("Payslip for October 2026", .address),
+        ("Oct 3", .email), ("Payslip for October 2026", .address), (FakeSecrets.openAI, .secret),
     ])
     func rejectsNoise(_ value: String, _ kind: PIIKind) {
         #expect(!AIFindingFilter.accept(value, as: kind, now: now))
@@ -116,5 +116,16 @@ struct AIEvalTests {
         }
         print("AIEVAL recall \(hits)/\(expected), false hits \(falseHits), skipped lines \(skipped)")
         #expect(falseHits == 0)
+    }
+
+    @Test(arguments: [
+        "Prepared by Maria Santos for the October review",
+        "Hi team, doc 8812 fails for Juan Dela Cruz, born 15 January 1990.",
+    ])
+    func copiedText(_ text: String) async throws {
+        let start = Date()
+        let result = try await TextRedactionEngine.run(text, ai: FoundationModelsDetector())
+        print(String(format: "AIEVAL text %.1fs %@ → %@", Date().timeIntervalSince(start), String(describing: result.aiStatus), result.text))
+        #expect(result.changed)
     }
 }

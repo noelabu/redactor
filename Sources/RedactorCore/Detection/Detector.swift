@@ -1,7 +1,7 @@
 import Foundation
 
 public enum PIIKind: String, Sendable, CaseIterable {
-    case email, phone, address, link, creditCard, idNumber, name, birthdate, manual
+    case email, phone, address, link, creditCard, idNumber, name, birthdate, secret, manual
 }
 
 public struct Detection: Sendable, Equatable {

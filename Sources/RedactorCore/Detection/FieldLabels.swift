@@ -16,7 +16,7 @@ public enum FieldLabels {
         (.name, [
             "full name", "last name", "first name", "middle name", "surname", "given names?",
             "mother'?s maiden name", "mother'?s name", "father'?s name", "spouse'?s name", "spouse",
-            "employee name", "account name", "taxpayer'?s name", "payee", "name",
+            "employee name", "account holder(?: name)?", "card ?holder(?: name)?", "account name", "taxpayer'?s name", "payee", "name",
             "mga pangalan", "gitnang apelyido", "gitnang pangalan", "pangalan", "apelyido",
         ]),
         (.birthdate, [
@@ -47,10 +47,29 @@ public enum FieldLabels {
 
     private static let leadingNumbering = try! NSRegularExpression(pattern: #"^\s*(?:\(?\d{1,2}[a-z]?[.)]\s*)?"#, options: [.caseInsensitive])
 
-    /// Labels on `line`. A label counts when followed by a colon, or when it starts the line
+    /// Form labels and code keys (`CodeKeys`) on `line`. A form label overlapping a code key is
+    /// dropped, and a form label's value stops where the next code key starts.
+    public static func matches(in line: String) -> [FieldLabelMatch] {
+        let keys = CodeKeys.matches(in: line)
+        let labels = formMatches(in: line)
+        if keys.isEmpty, labels.isEmpty, let key = CodeKeys.standaloneKey(in: line) { return [key] }
+        guard !keys.isEmpty else { return labels }
+        let ns = line as NSString
+        let kept: [FieldLabelMatch] = labels.compactMap { label in
+            if keys.contains(where: { NSIntersectionRange($0.labelRange, label.labelRange).length > 0 }) { return nil }
+            guard let value = label.valueRange else { return label }
+            let end = keys.map(\.labelRange.location).filter { $0 > value.location && $0 < NSMaxRange(value) }.min() ?? NSMaxRange(value)
+            // A value cut to nothing would turn the label standalone and claim the next line.
+            guard let clipped = trimmed(NSRange(location: value.location, length: end - value.location), in: ns) else { return nil }
+            return FieldLabelMatch(kind: label.kind, labelRange: label.labelRange, valueRange: clipped)
+        }
+        return (kept + keys).sorted { $0.labelRange.location < $1.labelRange.location }
+    }
+
+    /// Form labels on `line`. A label counts when followed by a colon, or when it starts the line
     /// (after optional "4." / "4a)") and either stands alone, has a "No." suffix, or is an
     /// ID/birthdate label followed by digits. Each value runs up to the next label.
-    public static func matches(in line: String) -> [FieldLabelMatch] {
+    static func formMatches(in line: String) -> [FieldLabelMatch] {
         let ns = line as NSString
         let full = NSRange(location: 0, length: ns.length)
         let lineStart = leadingNumbering.firstMatch(in: line, range: full).map { NSMaxRange($0.range) } ?? 0
@@ -130,6 +149,53 @@ public enum FieldLabels {
             return gap >= -0.3 * h && gap <= 2.5 * h && horizontal
         }
         return below.min(by: { candidates[$0].minY < candidates[$1].minY })
+    }
+
+    /// Indices of every box holding a standalone label's value, as in a table row with the value in
+    /// several columns: the boxes to the right on the label's row, up to the first one that isn't a
+    /// value (`isValue`) or sits further out than the label-to-value gap (so the chain doesn't cross
+    /// into another panel), else the nearest box below; each with the lines it wraps onto, above and
+    /// below. A wrapped line can't share its row with a box in the label's column: that is the next field.
+    public static func valueBoxes(of label: CGRect, among candidates: [CGRect], isValue: (Int) -> Bool) -> [Int] {
+        let h = label.height
+        func sameRow(_ a: CGRect, _ b: CGRect) -> Bool {
+            min(a.maxY, b.maxY) - max(a.minY, b.minY) >= 0.3 * min(a.height, b.height)
+        }
+        let row = candidates.indices
+            .filter { sameRow(label, candidates[$0]) && candidates[$0].minX >= label.maxX - h * 0.5 }
+            .sorted { candidates[$0].minX < candidates[$1].minX }
+
+        var picked: [Int] = []
+        var edge = label.maxX
+        var maxGap = 20 * h
+        for i in row {
+            let gap = candidates[i].minX - edge
+            guard gap <= maxGap, isValue(i) else { break }
+            if picked.isEmpty { maxGap = max(gap, 4 * h) }
+            picked.append(i)
+            edge = candidates[i].maxX
+        }
+        if picked.isEmpty, let below = neighbor(of: label, among: candidates), isValue(below) { picked = [below] }
+
+        func startsAnotherField(_ c: CGRect) -> Bool {
+            candidates.contains { $0 != c && $0.minX < label.maxX && $0.maxX > label.minX && sameRow($0, c) }
+        }
+        var result = picked
+        for start in picked {
+            for direction in [-1.0, 1.0] {
+                var current = candidates[start]
+                while let next = candidates.indices.first(where: { i in
+                    let c = candidates[i]
+                    let gap = direction > 0 ? c.minY - current.maxY : current.minY - c.maxY
+                    return !result.contains(i) && abs(c.minX - current.minX) <= h && gap >= -0.3 * h && gap <= 0.8 * h
+                        && !startsAnotherField(c)
+                }), isValue(next) {
+                    result.append(next)
+                    current = candidates[next]
+                }
+            }
+        }
+        return result
     }
 
     private static let valueCharacters = CharacterSet.alphanumerics

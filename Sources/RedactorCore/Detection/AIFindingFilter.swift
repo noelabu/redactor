@@ -22,7 +22,7 @@ public enum AIFindingFilter {
             return value.count >= 8 && matches(addressWords, value)
         case .name:
             return digits == 0 && value.count <= 60 && (1...6).contains(value.split(separator: " ").count) && isPersonName(value)
-        case .link, .manual:
+        case .link, .manual, .secret:
             return false
         }
     }
